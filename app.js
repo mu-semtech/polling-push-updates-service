@@ -65,7 +65,7 @@ app.post('/disconnect', function (req, res) {
 app.post('/delta', function(req, res) {
   // we only care about inserts
   for( const changeSet of req.body ) {
-    const inserts = req.body.inserts;
+    const inserts = changeSet.inserts;
     const predicateMapping = {
       "http://mu.semte.ch/vocabularies/delta/message": "message",
       "http://mu.semte.ch/vocabularies/delta/targetId": "target"
@@ -77,7 +77,7 @@ app.post('/delta', function(req, res) {
     );
 
     // capture message content
-    const infoObjects = {}
+    const infoObjects = {};
     resourcesWithType.forEach( ({subject: {value}}) => infoObjects[value] = {} );
 
     for (const {subject, predicate, object} of inserts) {

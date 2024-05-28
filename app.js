@@ -15,7 +15,7 @@ const LOG_CLEANUP = true;
 // Internal endpoint for internal testing
 app.post('/push', function (req, res) {
   const id = req.query["id"];
-  const message = JSON.parse(req.body);
+  const message = req.body;
 
   if( clientMessageMap[id] ) {
     clientMessageMap[id].push(message);
@@ -33,6 +33,10 @@ app.post('/push', function (req, res) {
 // Clients receive an id when they connect
 app.post('/connect', function (req, res) {
   const id = uuid();
+
+  console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
+  console.log(req.get("mu-session-id"));
+
 
   clientAliveTimestamps[id] = new Date();
   clientMessageMap[id] = [];
@@ -55,7 +59,7 @@ app.post('/disconnect', function (req, res) {
     delete idSessionMap[id];
     delete clientMessageMap[id];
     delete clientAliveTimestamps[id];
-    
+
     res
       .status(204)
       .send();
@@ -97,7 +101,10 @@ app.post('/delta', function(req, res) {
 });
 
 app.get('/pull', function (req, res) {
-  const id = req.query("id");
+  const id = req.query["id"];
+
+  console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
+  console.log(req.get("mu-session-id"));
 
   if (idSessionMap[id] && idSessionMap[id] == req.get("mu-session-id")) {
     const messages = clientMessageMap[id];

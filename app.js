@@ -78,7 +78,8 @@ app.post('/delta', bodyParser.json({ limit: '50mb' }), function(req, res) {
       const inserts = changeSet.inserts;
       const predicateMapping = {
         "http://mu.semte.ch/vocabularies/push/messageJSON": "message",
-        "http://mu.semte.ch/vocabularies/push/target": "target"
+        "http://mu.semte.ch/vocabularies/push/target": "target",
+        "http://mu.semte.ch/vocabularies/push/kind": "kind"
       };
 
       // find inserts with the desired type
@@ -101,13 +102,13 @@ app.post('/delta', bodyParser.json({ limit: '50mb' }), function(req, res) {
 
       // add messages
       for (const messageUri in infoObjects) {
-        const { message, target } = infoObjects[messageUri];
+        const { message, target, kind } = infoObjects[messageUri];
         if( LOG_CONNECTIONS )
-          console.log(`Handling  ${JSON.stringify({ message, target })}`);
+          console.log(`Handling  ${JSON.stringify({ message, target, kind })}`);
         if (clientMessageMap[target]) {
           if( LOG_CONNECTIONS )
-            console.log(`Setting  ${JSON.stringify({ message, target })}`);
-          clientMessageMap[target].push(JSON.parse(message));
+            console.log(`Setting  ${JSON.stringify({ message, target, kind })}`);
+          clientMessageMap[target].push({ body: JSON.parse(message), kind });
         } else {
           if( LOG_CONNECTIONS )
             console.log(`Target ${target} not found`);
@@ -135,13 +136,11 @@ app.get('/pull', function (req, res) {
   const id = req.query["id"];
 
   if( LOG_CONNECTIONS ) {
-    console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
+    console.log(JSON.stringify({ idSessionMap, clientMessageMap, clientAliveTimestamps }));
     console.log(req.get("mu-session-id"));
   }
 
   if (idSessionMap[id] && idSessionMap[id] == req.get("mu-session-id")) {
-    if( LOG_CLEANUP )
-      console.log('no session for id ${id}');
     const messages = clientMessageMap[id];
     clientAliveTimestamps[id] = new Date();
     clientMessageMap[id] = [];
@@ -149,6 +148,8 @@ app.get('/pull', function (req, res) {
       .status(200)
       .send({ messages });
   } else if (!idSessionMap[id]) {
+    if( LOG_CLEANUP )
+      console.log('no session for id ${id}');
     res
       .status(410)
       .send({ error: "Session expired" });

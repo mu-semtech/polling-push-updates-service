@@ -11,6 +11,7 @@ const idSessionMap = {};
 const clientConnectionTimeout = 5 * 60 * 1000;
 const cleanupInterval = 30 * 1000;
 const LOG_CLEANUP = true;
+const LOG_CONNECTIONS = false;
 
 // Internal endpoint for internal testing
 app.post('/push', function (req, res) {
@@ -34,9 +35,10 @@ app.post('/push', function (req, res) {
 app.post('/connect', function (req, res) {
   const id = `http://services.semantic.works/push-messages/client-id/${uuid()}`;
 
-  console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
-  console.log(req.get("mu-session-id"));
-
+  if( LOG_CONNECTIONS ) {
+    console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
+    console.log(req.get("mu-session-id"));
+  }
 
   clientAliveTimestamps[id] = new Date();
   clientMessageMap[id] = [];
@@ -69,7 +71,8 @@ app.post('/disconnect', function (req, res) {
 app.post('/delta', bodyParser.json({ limit: '50mb' }), function(req, res) {
   try {
     // we only care about inserts
-    console.log(`Got body ${JSON.stringify(req.body)}`);
+    if( LOG_CONNECTIONS )
+      console.log(`Got body ${JSON.stringify(req.body)}`);
 
     for (const changeSet of req.body) {
       const inserts = changeSet.inserts;
@@ -99,12 +102,15 @@ app.post('/delta', bodyParser.json({ limit: '50mb' }), function(req, res) {
       // add messages
       for (const messageUri in infoObjects) {
         const { message, target } = infoObjects[messageUri];
-        console.log(`Handling  ${JSON.stringify({ message, target })}`);
+        if( LOG_CONNECTIONS )
+          console.log(`Handling  ${JSON.stringify({ message, target })}`);
         if (clientMessageMap[target]) {
-          console.log(`Setting  ${JSON.stringify({ message, target })}`);
+          if( LOG_CONNECTIONS )
+            console.log(`Setting  ${JSON.stringify({ message, target })}`);
           clientMessageMap[target].push(JSON.parse(message));
         } else {
-          console.log(`Target ${target} not found`);
+          if( LOG_CONNECTIONS )
+            console.log(`Target ${target} not found`);
         }
       }
 
@@ -128,8 +134,10 @@ app.post('/delta', bodyParser.json({ limit: '50mb' }), function(req, res) {
 app.get('/pull', function (req, res) {
   const id = req.query["id"];
 
-  console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
-  console.log(req.get("mu-session-id"));
+  if( LOG_CONNECTIONS ) {
+    console.log({ idSessionMap, clientMessageMap, clientAliveTimestamps });
+    console.log(req.get("mu-session-id"));
+  }
 
   if (idSessionMap[id] && idSessionMap[id] == req.get("mu-session-id")) {
     if( LOG_CLEANUP )

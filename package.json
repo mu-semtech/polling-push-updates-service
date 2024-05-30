@@ -1,0 +1,15 @@
+{
+  "name": "polling-push-updates-service",
+  "version": "0.0.0",
+  "description": "Microservice so add push updates in a semantic.works stack",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Aad Versteden <madnificent@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mu-semtech/polling-push-updates-service.git"
+  }
+}

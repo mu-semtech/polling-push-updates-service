@@ -56,7 +56,16 @@ class Tab {
     if( this.res ) {
       this.res
         .status(200)
-        .send(JSON.stringify({data: {attributes: { messages: this.messages }}}));
+        .send(JSON.stringify( {
+          data:
+            this.messages.map( (message) => ({
+              type: "push-updates",
+              id: uuid(),
+              attributes: {
+                content: message.content,
+                channel: message.channel
+              }}) )
+      }));
       this.reset();
     }
   }
@@ -103,7 +112,6 @@ app.get('/messages', async (req, res) => {
 });
 
 app.post('/delta', async (req, res) => {
-  console.log(req.body);
   // We look for anything that is a push:Update
   const quadsBySubject = {};
   const insertedQuads =
@@ -125,11 +133,14 @@ app.post('/delta', async (req, res) => {
 
   Object.entries(quadsBySubject)
     .forEach(([_subject, quads], _index) => {
-      let tabUri, message;
+      let tabUri, message, channel;
       for (let quad of quads) {
         switch (quad.predicate.value) {
           case "http://mu.semte.ch/vocabularies/push/target":
             tabUri = quad.object.value;
+            break;
+          case "http://mu.semte.ch/vocabularies/push/channel":
+            channel = quad.object.value;
             break;
           // This format is far too simplistic.  We should be able to send linked data across instead.
           case "http://mu.semte.ch/vocabularies/push/message":
@@ -138,7 +149,7 @@ app.post('/delta', async (req, res) => {
         }
       }
     tabs[tabUri] ||= new Tab(tabUri);
-    tabs[tabUri].add([message]);
+    tabs[tabUri].add([{content: message,channel}]);
   });
 
   res.status(204).send();

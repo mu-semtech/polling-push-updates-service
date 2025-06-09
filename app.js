@@ -96,7 +96,8 @@ app.get('/tabUri', async (req, res) => {
 
 app.get('/messages', async (req, res) => {
   const tabUri = req.query.tab;
-  let tab = tabs[tabUri] ? tabs[tabUri] : new Tab(tabUri);
+  tabs[tabUri] ||= new Tab(tabUri);
+  let tab = tabs[tabUri];
   tab.res = res;
   tab.registerResponseObject(res);
 });

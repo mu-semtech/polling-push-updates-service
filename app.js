@@ -8,7 +8,67 @@ app.use(bodyParser.json());
  *
  * TODO: clear out inactive tabs
  */
-const tabMessages = {};
+const tabs = {};
+// Amount of milliseconds to wait after a Push has received before sending the information to a client
+const EXTRA_WAIT = 100;
+const CONNECTION_HANGING_TIME = 30000;
+
+class Tab {
+  messages = [];
+  uri;
+  // @type NodeJS.Timeout?
+  timeout;
+  res;
+
+  constructor( uri ) {
+    this.uri = uri;
+    this.reset();
+  }
+
+  reset() {
+    this.messages = [];
+    this.res = null;
+    this.timeout = null;
+  }
+
+  add( messages ) {
+    this.messages = [...this.messages, ...messages];
+    this.triggerUpdate();
+  }
+
+  registerResponseObject( res ) {
+    if( this.timeout )
+      this.clearTimeout();
+    this.res = res;
+    if ( this.messages.length )
+      this.transmit();
+    else
+      this.timeout = setTimeout( () => this.transmit(), CONNECTION_HANGING_TIME );
+  }
+
+  triggerUpdate() {
+    if( this.timeout )
+      this.clearTimeout();
+    this.timeout = setTimeout( () => this.transmit(), EXTRA_WAIT );
+  }
+
+  transmit() {
+    if( this.res ) {
+      this.res
+        .status(200)
+        .send(JSON.stringify({data: {attributes: { messages: this.messages }}}));
+      this.reset();
+    }
+  }
+
+  clearTimeout() {
+    if( this.timeout ) {
+      try { this.timeout.close(); }
+      catch (e) { console.warn( `${this.uri} had failing timeout closure.`) }
+      this.timeout = null;
+    }
+  }
+}
 
 app.get('/tabUri', async (req, res) => {
   // construct a new tabId
@@ -35,13 +95,10 @@ app.get('/tabUri', async (req, res) => {
 });
 
 app.get('/messages', async (req, res) => {
-  const tab = req.query.tab;
-  const messages = tabMessages[tab];
-  console.log({messages});
-  tabMessages[tab] = [];
-  res
-    .status(200)
-    .send( JSON.stringify({data: { attributes: { messages: messages || [] } }}) );
+  const tabUri = req.query.tab;
+  let tab = tabs[tabUri] ? tabs[tabUri] : new Tab(tabUri);
+  tab.res = res;
+  tab.registerResponseObject(res);
 });
 
 app.post('/delta', async (req, res) => {
@@ -79,11 +136,11 @@ app.post('/delta', async (req, res) => {
             break;
         }
       }
-      tabMessages[tabUri] ||= [];
-      tabMessages[tabUri].push(message);
+    tabs[tabUri] ||= new Tab(tabUri);
+    tabs[tabUri].add([message]);
   });
 
-  console.log(JSON.stringify(tabMessages));
+  res.status(204).send();
 });
 
 app.get('/', function( req, res ) {

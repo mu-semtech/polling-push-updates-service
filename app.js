@@ -6,7 +6,7 @@ app.use(bodyParser.json());
 /**
  * Stores the messages to be sent for each tab
  *
- * TODO: clear out inactive tabs
+ * TODO: clear out inactive tabs and create push:Disconnect update for other services
  */
 const tabs = {};
 // Amount of milliseconds to wait after a Push has received before sending the information to a client
@@ -15,8 +15,9 @@ const CONNECTION_HANGING_TIME = 30000;
 
 class Tab {
   messages = [];
+  /** @type string? */
   uri;
-  // @type NodeJS.Timeout?
+  /** @type NodeJS.Timeout? */
   timeout;
   res;
 
@@ -148,15 +149,12 @@ app.post('/delta', async (req, res) => {
             break;
         }
       }
+
     tabs[tabUri] ||= new Tab(tabUri);
     tabs[tabUri].add([{content: message,channel}]);
   });
 
   res.status(204).send();
 });
-
-app.get('/', function( req, res ) {
-  res.send('Hello mu-javascript-template');
-} );
 
 app.use(errorHandler);

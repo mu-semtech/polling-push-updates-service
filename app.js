@@ -11,18 +11,58 @@ app.use(bodyParser.json());
 const tabs = {};
 // Amount of milliseconds to wait after a Push has received before sending the information to a client
 const EXTRA_WAIT = 100;
+/**
+ * @type {number} Amount of milliseconds we leave a connection hanging when we don't have data yet.
+ */
 const CONNECTION_HANGING_TIME = 30000;
+/**
+ * @type {number} Amount of milliseconds we keep a tabUri known after hearing from them.
+ */
+const REMOVE_INACTIVE_CLIENT_TIME = 60000;
+/**
+ * @type (number} Amount of milliseconds to figure out when to clean out tabs which may not exist anymore.
+ */
+const REMOVE_INACTIVE_CLIENT_INTERVAL = 10000;
+
+setInterval(cleanInactiveTabs, REMOVE_INACTIVE_CLIENT_INTERVAL);
+
+async function cleanInactiveTabs() {
+  const keysToClear = [];
+  const now = Date.now();
+  for (let key in tabs)
+    if( now - tabs[key].lastHeardDate.getTime() > REMOVE_INACTIVE_CLIENT_TIME )
+      keysToClear.push(key);
+  console.log(`Clearing ${keysToClear.length} keys`);
+  keysToClear.forEach( (key) => delete tabs[key] );
+  for (let tabUri of keysToClear) {
+    // TODO: store more information in the tab object so all information can be deleted
+    await update(`
+      PREFIX push: <http://mu.semte.ch/vocabularies/push/>
+      PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      DELETE DATA {
+        ${sparqlEscapeUri(tabUri)} a push:Tab.
+        }`);
+  }
+}
 
 class Tab {
   messages = [];
   /** @type string? */
   uri;
+  /**
+   * @type string
+   * The session to which this tab belongs
+   */
+  sessionId;
   /** @type NodeJS.Timeout? */
   timeout;
   res;
+  lastHeardDate;
 
-  constructor( uri ) {
+  constructor( uri, sessionId ) {
     this.uri = uri;
+    this.sessionId = sessionId;
     this.reset();
   }
 
@@ -30,6 +70,10 @@ class Tab {
     this.messages = [];
     this.res = null;
     this.timeout = null;
+  }
+
+  heardClient() {
+    this.lastHeardDate = new Date();
   }
 
   add( messages ) {
@@ -67,6 +111,7 @@ class Tab {
                 channel: message.channel
               }}) )
       }));
+      this.heardClient();
       this.reset();
     }
   }
@@ -85,6 +130,9 @@ app.get('/tabUri', async (req, res) => {
   const tabUuid = uuid();
   const tabUri = `http://services.redpencil.io/polling-push-updates/tab-ids/${tabUuid}`;
   const sessionId = req.get("mu-session-id");
+
+  tabs[tabUri] ||= new Tab(tabUri, sessionId);
+  tabs[tabUri].heardClient();
 
   // associate the tabId with the current session
   await update(`
@@ -106,10 +154,22 @@ app.get('/tabUri', async (req, res) => {
 
 app.get('/messages', async (req, res) => {
   const tabUri = req.query.tab;
-  tabs[tabUri] ||= new Tab(tabUri);
-  let tab = tabs[tabUri];
-  tab.res = res;
-  tab.registerResponseObject(res);
+  const sessionId = req.get('mu-session-id');
+  if( tabs[tabUri] && tabs[tabUri].sessionId === sessionId) {
+    let tab = tabs[tabUri];
+    tab.res = res;
+    tab.registerResponseObject(res);
+    tab.heardClient();
+  } else {
+    res
+      .status(404)
+      .send(JSON.stringify({errors: [
+        {
+          status: "404",
+          title: "Tab URI not found"
+        }
+      ]}));
+  }
 });
 
 app.post('/delta', async (req, res) => {

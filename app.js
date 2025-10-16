@@ -24,6 +24,23 @@ const REMOVE_INACTIVE_CLIENT_TIME = 60000;
  */
 const REMOVE_INACTIVE_CLIENT_INTERVAL = 10000;
 
+function sleep( ms ) {
+  return new Promise( (res) => setTimeout( res, ms ) )
+}
+
+async function updateRetry( query, { retries=1, timeout=1000 } ) {
+  if ( retries < 1 ) {
+    return await update(query);
+  } else {
+    try {
+      return await update(query);
+    } catch (e) {
+      await  sleep( timeout );
+      return await updateRetry( query, { retries: retries - 1, timeout } );
+    }
+  }
+}
+
 setInterval(cleanInactiveTabs, REMOVE_INACTIVE_CLIENT_INTERVAL);
 
 async function cleanInactiveTabs() {
@@ -36,13 +53,13 @@ async function cleanInactiveTabs() {
   keysToClear.forEach( (key) => delete tabs[key] );
   for (let tabUri of keysToClear) {
     // TODO: store more information in the tab object so all information can be deleted
-    await update(`
+    await updateRetry(`
       PREFIX push: <http://mu.semte.ch/vocabularies/push/>
       PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
       PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
       DELETE DATA {
         ${sparqlEscapeUri(tabUri)} a push:Tab.
-        }`);
+        }`, { retries: 60, timeout: 10000 });
   }
 }
 
@@ -135,7 +152,7 @@ app.get('/tabUri', async (req, res) => {
   tabs[tabUri].heardClient();
 
   // associate the tabId with the current session
-  await update(`
+  await updateRetry(`
     PREFIX push: <http://mu.semte.ch/vocabularies/push/>
     PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -145,7 +162,7 @@ app.get('/tabUri', async (req, res) => {
         mu:uuid ${sparqlEscapeString(tabUuid)};
         rdf:label ${sparqlEscapeString(`User Agent Tab ${tabUuid}`)};
         push:session ${sparqlEscapeUri(sessionId)}.
-     }`);
+        }`, { retries: 20, timeout: 1000 });
   // return the tabId
   res
     .status(200)

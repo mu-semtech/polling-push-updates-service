@@ -227,8 +227,10 @@ app.post('/delta', async (req, res) => {
         }
       }
 
-    tabs[tabUri] ||= new Tab(tabUri);
-    tabs[tabUri].add([{content: message,channel}]);
+    if ( tabs[tabUri] ) {
+      // if this is not a tab anymore, then we assume the client has disconnected
+      tabs[tabUri].add([{content: message,channel}]);
+    }
   });
 
   res.status(204).send();

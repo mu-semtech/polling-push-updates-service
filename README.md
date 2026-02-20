@@ -64,10 +64,20 @@ export default [
 ]
 ```
 
-Restart database and delta-notifier and start up the new service
+Add a dispatcher rule to `./config/dispatcher/dispatcher.ex`
+
+``` elixir
+  @json %{ accept: %{ json: true } }
+
+  match "/polling/*path", @json do
+    Proxy.forward conn, path, "http://polling-push-update/"
+  end
+```
+
+Restart database, delta-notifier and dispatcher to pick up their new configuration and start up the new service
 
 ``` javascript
-docker compose restart database delta-notifier
+docker compose restart database delta-notifier dispatcher
 docker compose up -d
 ```
 
@@ -102,7 +112,7 @@ Returns 200 OK with the new tab URI
 ```
 
 #### GET /messages?tab=tabUri
-Long-polling endpoint. The client calls this repeatedly to receive messages. 
+Long-polling endpoint. The client calls this repeatedly to receive messages.
 
 The connection is held open until either:
 - a message arrives (sent after a `EXTRA_TIME` debounce delay)

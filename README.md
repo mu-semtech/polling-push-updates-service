@@ -92,8 +92,8 @@ The following settings can be configured via environment variables
 - **`REMOVE_INACTIVE_CLIENT_INTERVAL`**: Amount of milliseconds to figure out when to clean out tabs which may not exist anymore (default: `10000` = 10 seconds)
 
 ### REST API
-#### GET /tabUri
-Creates a new tab and associates it with the user's session.
+#### POST /tab-ids
+Creates a new tab identifier and associates it with the user's session.
 
 Returns 200 OK with the new tab URI
 
@@ -101,7 +101,7 @@ Returns 200 OK with the new tab URI
 { 
   "data": [
     {
-      "type": "tabs",
+      "type": "tab-ids",
       "id": "b0da18b0-051a-49b1-8623-4c2f686cda4e",
       "attributes": {
         "uri": "http://services.redpencil.io/polling-push-updates/tab-ids/b0da18b0-051a-49b1-8623-4c2f686cda4e",

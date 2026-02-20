@@ -142,7 +142,7 @@ class Tab {
   }
 }
 
-app.get('/tabUri', async (req, res) => {
+app.post('/tab-ids', async (req, res) => {
   // construct a new tabId
   const tabUuid = uuid();
   const tabUri = `http://services.redpencil.io/polling-push-updates/tab-ids/${tabUuid}`;
@@ -165,8 +165,16 @@ app.get('/tabUri', async (req, res) => {
         }`, { retries: 20, timeout: 1000 });
   // return the tabId
   res
-    .status(200)
-    .send(JSON.stringify({data: {attributes: { tabUri }} }));
+    .status(201)
+    .send(JSON.stringify({
+      data: {
+        type: "tab-ids",
+        id: tabUuid,
+        attributes: {
+          uri: tabUri
+        }
+      }
+    }));
 });
 
 app.get('/messages', async (req, res) => {

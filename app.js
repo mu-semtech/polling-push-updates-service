@@ -1,5 +1,5 @@
 import { app, update, errorHandler, uuid, sparqlEscapeString, sparqlEscapeUri } from 'mu';
-import bodyParser from "body-parser";
+import bodyParser from 'body-parser';
 
 app.use(bodyParser.json());
 
@@ -10,19 +10,19 @@ app.use(bodyParser.json());
  */
 const tabs = {};
 // Amount of milliseconds to wait after a Push has received before sending the information to a client
-const EXTRA_WAIT = 100;
+const EXTRA_WAIT = parseInt(process.env.EXTRA_WAIT || '100');
 /**
  * @type {number} Amount of milliseconds we leave a connection hanging when we don't have data yet.
  */
-const CONNECTION_HANGING_TIME = 30000;
+const CONNECTION_HANGING_TIME = parseInt(process.env.CONNECTION_HANGING_TIME || '30000');
 /**
  * @type {number} Amount of milliseconds we keep a tabUri known after hearing from them.
  */
-const REMOVE_INACTIVE_CLIENT_TIME = 60000;
+const REMOVE_INACTIVE_CLIENT_TIME = parseInt(process.env.REMOVE_INACTIVE_CLIENT_TIME || '60000');
 /**
  * @type (number} Amount of milliseconds to figure out when to clean out tabs which may not exist anymore.
  */
-const REMOVE_INACTIVE_CLIENT_INTERVAL = 10000;
+const REMOVE_INACTIVE_CLIENT_INTERVAL = parseInt(process.env.REMOVE_INACTIVE_CLIENT_INTERVAL || '10000');
 
 function sleep( ms ) {
   return new Promise( (res) => setTimeout( res, ms ) )
